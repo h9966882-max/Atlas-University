@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, X, ChevronRight, ChevronDown, LayoutList, GaugeCircle, GitBranch, AlertTriangle, Clock, CircleDot, CheckCircle2, PauseCircle, Circle, Crosshair } from 'lucide-react';
+import { Search, Filter, X, ChevronRight, ChevronDown, LayoutList, GaugeCircle, GitBranch, AlertTriangle, Clock, CircleDot, CheckCircle2, PauseCircle, Circle, Crosshair, Plus, Trash2 } from 'lucide-react';
 import RAW_TASKS from './tasks.json';
 
-const STORAGE_KEY = 'atlas-task-overrides';
+const STORAGE_KEY = 'atlas-tasks-v1';
 
 const STATUS_ORDER = ['進行中', '保留', '未着手', '完了'];
 const STATUS_STYLE = {
@@ -11,20 +11,33 @@ const STATUS_STYLE = {
   '完了':   { bg: '#CFE8D6', fg: '#28633B', dot: '#5DA675', icon: CheckCircle2 },
   '保留':   { bg: '#F4CFC6', fg: '#9A3B26', dot: '#D4694E', icon: PauseCircle },
 };
+const PRIORITY_ORDER = ['Must', 'Better', 'Best', 'Beyond Best'];
 const PRIORITY_STYLE = {
   'Must':        { fg: '#B23A2A', bg: '#F4D9D2', label: 'MUST' },
   'Better':      { fg: '#8A5A0E', bg: '#FBE9C8', label: 'BETTER' },
   'Best':        { fg: '#1F6E63', bg: '#D3E9E4', label: 'BEST' },
   'Beyond Best': { fg: '#3E4E8C', bg: '#DBE0F2', label: 'BEYOND BEST' },
 };
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
 
-const INK = '#0F2A44';        // 深いブループリント紺
-const INK_DEEP = '#0A1E33';   // ヘッダー/ナビ用のより深い紺
+const INK = '#0F2A44';
+const INK_DEEP = '#0A1E33';
 const GRID_LINE = 'rgba(158,196,224,0.16)';
-const PAPER = '#F5F8FA';      // 図面紙のようなカードの下地
+const PAPER = '#F5F8FA';
 const PAPER_LINE = '#C9D7E2';
-const AMBER = '#E2A23C';      // 注釈ペンのアンバー
-const REDLINE = '#C8503A';    // 校正の朱色
+const AMBER = '#E2A23C';
+const REDLINE = '#C8503A';
+
+const EMPTY_TASK = {
+  id: '', name: '', phase: '', blocker: 'No', risk: '', createdAt: '', dependency: '',
+  note: '', priority: 'Must', category: '', children: '', doneCondition: '', execOrder: '',
+  assignee: '', dailyDisplay: '今後', lastEdited: '', dueDate: '', summary: '', status: '未着手',
+  auditType: '実行タスク', sizeEstimate: 'M', parent: '', progress: '', startDate: '', deliverable: '', domain: '',
+};
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function normalizeTask(t) {
   const progressNum = t.progress === '' || t.progress === null || t.progress === undefined
@@ -32,29 +45,31 @@ function normalizeTask(t) {
   return { ...t, progressNum };
 }
 
-function loadOverrides() {
+function loadTasks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
-    return {};
+    // フォールバックして元データを使う
   }
+  return RAW_TASKS;
 }
 
-function saveOverridesToStorage(next) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch (e) {
-    console.error('保存に失敗しました', e);
-  }
+function nextTaskId(tasks) {
+  let max = 0;
+  tasks.forEach((t) => {
+    const m = /^ATLAS-T-(\d+)$/.exec(t.id || '');
+    if (m) max = Math.max(max, Number(m[1]));
+  });
+  return `ATLAS-T-${max + 1}`;
 }
 
 function CornerMarks({ color }) {
   const c = color || PAPER_LINE;
-  const arm = 9;
-  const style = (pos) => ({
-    position: 'absolute', width: arm, height: arm, borderColor: c, ...pos
-  });
+  const style = (pos) => ({ position: 'absolute', width: 9, height: 9, ...pos });
   return (
     <>
       <span style={{ ...style({ top: 6, left: 6, borderTop: `1.5px solid ${c}`, borderLeft: `1.5px solid ${c}` }) }} />
@@ -119,7 +134,7 @@ function TaskCard({ task, onOpen }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: INK, lineHeight: 1.45, marginBottom: 4 }}>
-            {task.name}
+            {task.name || '(無題のタスク)'}
           </div>
           <div style={{ fontSize: 10.5, color: '#6E8296', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8, letterSpacing: '0.02em' }}>
             {task.id}{task.domain ? ` / ${task.domain}` : ''}
@@ -162,17 +177,8 @@ function FilterSheet({ open, onClose, filters, setFilters, options }) {
     status: '状態', priority: '優先区分', category: '分類', domain: '領域', phase: 'フェーズ', assignee: '担当'
   };
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(10,30,51,0.55)', zIndex: 50,
-      display: 'flex', alignItems: 'flex-end'
-    }} onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: PAPER, width: '100%', maxHeight: '80vh', overflowY: 'auto',
-          borderRadius: '10px 10px 0 0', padding: '18px 18px 28px', borderTop: `2px solid ${AMBER}`
-        }}
-      >
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,30,51,0.55)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: PAPER, width: '100%', maxHeight: '80vh', overflowY: 'auto', borderRadius: '10px 10px 0 0', padding: '18px 18px 28px', borderTop: `2px solid ${AMBER}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: INK, letterSpacing: '0.03em' }}>絞り込み条件</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', padding: 4 }}>
@@ -206,13 +212,7 @@ function FilterSheet({ open, onClose, filters, setFilters, options }) {
             </div>
           </div>
         ))}
-        <button
-          onClick={() => setFilters({})}
-          style={{
-            width: '100%', padding: '10px', borderRadius: 3, border: `1px solid ${PAPER_LINE}`,
-            background: '#fff', color: '#4E6478', fontSize: 13, fontWeight: 600, marginTop: 4
-          }}
-        >
+        <button onClick={() => setFilters({})} style={{ width: '100%', padding: '10px', borderRadius: 3, border: `1px solid ${PAPER_LINE}`, background: '#fff', color: '#4E6478', fontSize: 13, fontWeight: 600, marginTop: 4 }}>
           すべてクリア
         </button>
       </div>
@@ -220,133 +220,166 @@ function FilterSheet({ open, onClose, filters, setFilters, options }) {
   );
 }
 
-function DetailSheet({ task, onClose, onUpdate }) {
-  if (!task) return null;
-  const [status, setStatus] = useState(task.status);
-  const [progress, setProgress] = useState(task.progressNum ?? 0);
-  const [note, setNote] = useState(task.note || '');
+const LABEL_STYLE = { fontSize: 10.5, fontWeight: 700, color: '#6E8296', marginBottom: 6, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace" };
+const INPUT_STYLE = { width: '100%', border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: '9px 10px', fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff', color: INK };
 
-  useEffect(() => {
-    setStatus(task.status);
-    setProgress(task.progressNum ?? 0);
-    setNote(task.note || '');
-  }, [task.id]);
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={LABEL_STYLE}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function SectionCard({ title, children }) {
+  return (
+    <div style={{ position: 'relative', background: '#fff', border: `1px solid ${PAPER_LINE}`, borderRadius: 4, padding: 14, marginBottom: 14 }}>
+      <CornerMarks color={AMBER} />
+      <div style={{ ...LABEL_STYLE, marginBottom: 12, fontSize: 11.5, color: INK }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function ChipGroup({ options, value, onChange, styleFor }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {options.map((opt) => {
+        const active = value === opt;
+        const st = styleFor ? styleFor(opt) : null;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            style={{
+              fontSize: 12.5, padding: '6px 12px', borderRadius: 3,
+              border: active ? `1.5px solid ${st ? st.dot || st.fg : AMBER}` : `1px solid ${PAPER_LINE}`,
+              background: active ? (st ? st.bg : '#FBE9C8') : '#fff',
+              color: active ? (st ? st.fg : '#8A5A0E') : '#3E5266',
+              fontWeight: active ? 700 : 500, cursor: 'pointer'
+            }}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TaskForm({ task, isNew, suggestedId, onSave, onCancel, onDelete }) {
+  const [form, setForm] = useState(() => task ? { ...task } : { ...EMPTY_TASK, id: suggestedId, createdAt: todayStr(), lastEdited: todayStr() });
+  const [idError, setIdError] = useState('');
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setVal = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
   const handleSave = () => {
-    onUpdate(task.id, { status, progress: String(progress), note });
-    onClose();
+    if (!form.name.trim()) {
+      alert('タスク名を入力してください。');
+      return;
+    }
+    if (!form.id.trim()) {
+      setIdError('タスクIDを入力してください。');
+      return;
+    }
+    onSave({ ...form, lastEdited: todayStr() });
   };
 
-  const Row = ({ label, value }) => value ? (
-    <div style={{ marginBottom: 11 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6E8296', marginBottom: 3, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace" }}>{label}</div>
-      <div style={{ fontSize: 13, color: '#1C3348', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{value}</div>
-    </div>
-  ) : null;
-
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(10,30,51,0.55)', zIndex: 50,
-      display: 'flex', alignItems: 'flex-end'
-    }} onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: PAPER, width: '100%', maxHeight: '88vh', overflowY: 'auto',
-          borderRadius: '10px 10px 0 0', padding: '20px 18px 32px', borderTop: `2px solid ${AMBER}`
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#6E8296', letterSpacing: '0.03em' }}>{task.id}</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', padding: 4 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,30,51,0.55)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={onCancel}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#E3EAF0', width: '100%', maxHeight: '92vh', overflowY: 'auto', borderRadius: '10px 10px 0 0', padding: '20px 18px 32px', borderTop: `2px solid ${AMBER}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#6E8296', letterSpacing: '0.03em', marginBottom: 2 }}>
+              {isNew ? '新規タスク作成' : form.id}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{isNew ? '新しいタスクを登録' : 'タスクを編集'}</div>
+          </div>
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', padding: 4 }}>
             <X size={20} color="#4E6478" />
           </button>
         </div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.5, marginBottom: 10 }}>
-          {task.name}
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-          <PriorityChip priority={task.priority} />
-          {task.domain && (
-            <span style={{ fontSize: 11, color: '#3E5266', background: '#E4ECF1', padding: '2px 8px', borderRadius: 2, fontFamily: "'JetBrains Mono', monospace" }}>{task.domain}</span>
-          )}
-          {task.category && (
-            <span style={{ fontSize: 11, color: '#3E5266', background: '#E4ECF1', padding: '2px 8px', borderRadius: 2, fontFamily: "'JetBrains Mono', monospace" }}>{task.category}</span>
-          )}
-          {task.sizeEstimate && (
-            <span style={{ fontSize: 11, color: '#3E5266', background: '#E4ECF1', padding: '2px 8px', borderRadius: 2, fontFamily: "'JetBrains Mono', monospace" }}>規模 {task.sizeEstimate}</span>
-          )}
-        </div>
 
-        <div style={{ position: 'relative', background: '#fff', border: `1px solid ${PAPER_LINE}`, borderRadius: 4, padding: 14, marginBottom: 16 }}>
-          <CornerMarks color={AMBER} />
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6E8296', marginBottom: 8, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace" }}>状態を更新</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-            {STATUS_ORDER.map((s) => {
-              const active = status === s;
-              const style = STATUS_STYLE[s];
-              return (
-                <button
-                  key={s}
-                  onClick={() => setStatus(s)}
-                  style={{
-                    fontSize: 12.5, padding: '6px 12px', borderRadius: 3,
-                    border: active ? `1.5px solid ${style.dot}` : `1px solid ${PAPER_LINE}`,
-                    background: active ? style.bg : '#fff',
-                    color: active ? style.fg : '#3E5266',
-                    fontWeight: active ? 700 : 500, cursor: 'pointer'
-                  }}
-                >
-                  {s}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6E8296', marginBottom: 8, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace" }}>
-            進捗率 {progress}%
-          </div>
-          <input
-            type="range" min="0" max="100" value={progress}
-            onChange={(e) => setProgress(Number(e.target.value))}
-            style={{ width: '100%', marginBottom: 14 }}
-          />
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6E8296', marginBottom: 6, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace" }}>備考</div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="メモを追加..."
-            rows={3}
-            style={{
-              width: '100%', border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 8,
-              fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box'
-            }}
-          />
+        <SectionCard title="基本情報">
+          <Field label="タスク名 *">
+            <input style={INPUT_STYLE} value={form.name} onChange={set('name')} placeholder="例: 〈広報〉サイトマップ作成" />
+          </Field>
+          {isNew && (
+            <Field label="タスクID *">
+              <input
+                style={{ ...INPUT_STYLE, fontFamily: "'JetBrains Mono', monospace" }}
+                value={form.id}
+                onChange={(e) => { setIdError(''); set('id')(e); }}
+                placeholder="例: ATLAS-T-281"
+              />
+              {idError && <div style={{ color: REDLINE, fontSize: 11.5, marginTop: 4 }}>{idError}</div>}
+            </Field>
+          )}
+          <Field label="状態">
+            <ChipGroup options={STATUS_ORDER} value={form.status} onChange={(v) => setVal('status', v)} styleFor={(o) => STATUS_STYLE[o]} />
+          </Field>
+          <Field label="優先区分">
+            <ChipGroup options={PRIORITY_ORDER} value={form.priority} onChange={(v) => setVal('priority', v)} styleFor={(o) => PRIORITY_STYLE[o]} />
+          </Field>
+          <Field label={`進捗率 ${form.progress === '' ? '(未設定)' : form.progress + '%'}`}>
+            <input
+              type="range" min="0" max="100"
+              value={form.progress === '' ? 0 : form.progress}
+              onChange={(e) => setVal('progress', String(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </Field>
+        </SectionCard>
+
+        <SectionCard title="分類・規模">
+          <Field label="領域"><input style={INPUT_STYLE} value={form.domain} onChange={set('domain')} placeholder="例: 広報・Web" /></Field>
+          <Field label="分類"><input style={INPUT_STYLE} value={form.category} onChange={set('category')} placeholder="例: システム" /></Field>
+          <Field label="フェーズ"><input style={INPUT_STYLE} value={form.phase} onChange={set('phase')} placeholder="例: Phase10｜開校準備" /></Field>
+          <Field label="見積規模">
+            <ChipGroup options={SIZE_ORDER} value={form.sizeEstimate} onChange={(v) => setVal('sizeEstimate', v)} />
+          </Field>
+          <Field label="担当"><input style={INPUT_STYLE} value={form.assignee} onChange={set('assignee')} /></Field>
+        </SectionCard>
+
+        <SectionCard title="日程">
+          <Field label="期限"><input type="date" style={INPUT_STYLE} value={form.dueDate} onChange={set('dueDate')} /></Field>
+          <Field label="開始日"><input type="date" style={INPUT_STYLE} value={form.startDate} onChange={set('startDate')} /></Field>
+          <Field label="実行順"><input style={INPUT_STYLE} value={form.execOrder} onChange={set('execOrder')} inputMode="numeric" /></Field>
+        </SectionCard>
+
+        <SectionCard title="詳細・関連">
+          <Field label="概要"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.summary} onChange={set('summary')} /></Field>
+          <Field label="完了条件"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.doneCondition} onChange={set('doneCondition')} /></Field>
+          <Field label="親タスク(名前で入力)"><input style={INPUT_STYLE} value={form.parent} onChange={set('parent')} placeholder="親タスクのタスク名" /></Field>
+          <Field label="依存関係"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.dependency} onChange={set('dependency')} /></Field>
+          <Field label="ブロッカー">
+            <ChipGroup options={['No', 'Yes']} value={form.blocker} onChange={(v) => setVal('blocker', v)} />
+          </Field>
+          <Field label="リスク"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.risk} onChange={set('risk')} /></Field>
+          <Field label="備考"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.note} onChange={set('note')} /></Field>
+          <Field label="関連成果物"><textarea style={{ ...INPUT_STYLE, resize: 'vertical' }} rows={2} value={form.deliverable} onChange={set('deliverable')} /></Field>
+          <Field label="監査区分"><input style={INPUT_STYLE} value={form.auditType} onChange={set('auditType')} /></Field>
+          <Field label="日次表示区分"><input style={INPUT_STYLE} value={form.dailyDisplay} onChange={set('dailyDisplay')} /></Field>
+        </SectionCard>
+
+        <button
+          onClick={handleSave}
+          style={{ width: '100%', padding: '12px', borderRadius: 3, border: 'none', background: INK, color: '#F5F8FA', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.03em', fontFamily: "'JetBrains Mono', monospace", marginBottom: 10 }}
+        >
+          {isNew ? '登録する' : '保存する'}
+        </button>
+
+        {!isNew && onDelete && (
           <button
-            onClick={handleSave}
-            style={{
-              width: '100%', marginTop: 12, padding: '11px', borderRadius: 3, border: 'none',
-              background: INK, color: '#F5F8FA', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-              letterSpacing: '0.03em', fontFamily: "'JetBrains Mono', monospace"
-            }}
+            onClick={onDelete}
+            style={{ width: '100%', padding: '11px', borderRadius: 3, border: `1px solid ${REDLINE}`, background: '#fff', color: REDLINE, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
-            保存する
+            <Trash2 size={15} /> このタスクを削除
           </button>
-        </div>
-
-        <Row label="概要" value={task.summary} />
-        <Row label="完了条件" value={task.doneCondition} />
-        <Row label="親タスク" value={task.parent} />
-        <Row label="依存関係" value={task.dependency} />
-        <Row label="ブロッカー" value={task.blocker === 'Yes' ? 'あり' : null} />
-        <Row label="リスク" value={task.risk} />
-        <Row label="担当" value={task.assignee} />
-        <Row label="フェーズ" value={task.phase} />
-        <Row label="期限" value={task.dueDate} />
-        <Row label="開始日" value={task.startDate} />
-        <Row label="実行順" value={task.execOrder} />
-        <Row label="監査区分" value={task.auditType} />
-        <Row label="関連成果物" value={task.deliverable} />
-        <Row label="最終編集" value={task.lastEdited} />
+        )}
       </div>
     </div>
   );
@@ -505,10 +538,7 @@ function HierarchyView({ tasks, onOpen }) {
         const doneKids = kids.filter((k) => k.status === '完了').length;
         return (
           <div key={root.id} style={{ position: 'relative', marginBottom: 10, border: `1px solid ${PAPER_LINE}`, borderRadius: 4, background: PAPER, overflow: 'hidden' }}>
-            <button
-              onClick={() => toggle(root.name)}
-              style={{ width: '100%', textAlign: 'left', padding: '12px 14px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-            >
+            <button onClick={() => toggle(root.name)} style={{ width: '100%', textAlign: 'left', padding: '12px 14px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               {isOpen ? <ChevronDown size={16} color="#6E8296" /> : <ChevronRight size={16} color="#6E8296" />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: INK }}>{root.name}</div>
@@ -519,15 +549,7 @@ function HierarchyView({ tasks, onOpen }) {
             {isOpen && (
               <div style={{ padding: '0 14px 12px' }}>
                 {kids.map((k) => (
-                  <button
-                    key={k.id}
-                    onClick={() => onOpen(k)}
-                    style={{
-                      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '8px 10px', marginTop: 6, background: '#fff', border: `1px solid #DDE7EE`,
-                      borderRadius: 3, cursor: 'pointer'
-                    }}
-                  >
+                  <button key={k.id} onClick={() => onOpen(k)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginTop: 6, background: '#fff', border: `1px solid #DDE7EE`, borderRadius: 3, cursor: 'pointer' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, color: '#1C3348', marginBottom: 3 }}>{k.name}</div>
                       <ProgressBar value={k.progressNum} color={k.status === '完了' ? '#5DA675' : AMBER} />
@@ -545,30 +567,29 @@ function HierarchyView({ tasks, onOpen }) {
 }
 
 export default function App() {
-  const baseTasks = useMemo(() => RAW_TASKS.map(normalizeTask), []);
-  const [overrides, setOverrides] = useState(() => loadOverrides());
+  const [tasksRaw, setTasksRaw] = useState(() => loadTasks());
   const [tab, setTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({});
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [creating, setCreating] = useState(false);
 
-  const tasks = useMemo(() => {
-    return baseTasks.map((t) => {
-      const o = overrides[t.id];
-      if (!o) return t;
-      const merged = { ...t, ...o };
-      merged.progressNum = merged.progress === '' || merged.progress === null || merged.progress === undefined
-        ? null : Number(merged.progress);
-      return merged;
-    });
-  }, [baseTasks, overrides]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksRaw));
+    } catch (e) {
+      console.error('保存に失敗しました', e);
+    }
+  }, [tasksRaw]);
+
+  const tasks = useMemo(() => tasksRaw.map(normalizeTask), [tasksRaw]);
 
   const options = useMemo(() => {
     const uniq = (arr) => Array.from(new Set(arr.filter((v) => v !== undefined))).sort();
     return {
       status: uniq(tasks.map((t) => t.status)),
-      priority: ['Must', 'Better', 'Best', 'Beyond Best'].filter((p) => tasks.some((t) => t.priority === p)),
+      priority: PRIORITY_ORDER.filter((p) => tasks.some((t) => t.priority === p)),
       category: uniq(tasks.map((t) => t.category)),
       domain: uniq(tasks.map((t) => t.domain)),
       phase: uniq(tasks.map((t) => t.phase)),
@@ -579,7 +600,7 @@ export default function App() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tasks.filter((t) => {
-      if (q && !(t.name.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q) || t.id.toLowerCase().includes(q))) return false;
+      if (q && !((t.name || '').toLowerCase().includes(q) || (t.summary || '').toLowerCase().includes(q) || (t.id || '').toLowerCase().includes(q))) return false;
       for (const key of Object.keys(filters)) {
         if (filters[key] && t[key] !== filters[key]) return false;
       }
@@ -597,12 +618,25 @@ export default function App() {
     });
   }, [filtered]);
 
-  const handleUpdate = useCallback((id, patch) => {
-    setOverrides((prev) => {
-      const next = { ...prev, [id]: { ...(prev[id] || {}), ...patch } };
-      saveOverridesToStorage(next);
-      return next;
-    });
+  const handleUpdate = useCallback((updatedTask) => {
+    setTasksRaw((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    setSelectedTask(null);
+  }, []);
+
+  const handleCreate = useCallback((newTask) => {
+    if (tasksRaw.some((t) => t.id === newTask.id)) {
+      alert('そのタスクIDはすでに使われています。別のIDを入力してください。');
+      return;
+    }
+    setTasksRaw((prev) => [...prev, newTask]);
+    setCreating(false);
+  }, [tasksRaw]);
+
+  const handleDelete = useCallback((id) => {
+    if (window.confirm('このタスクを削除します。よろしいですか?')) {
+      setTasksRaw((prev) => prev.filter((t) => t.id !== id));
+      setSelectedTask(null);
+    }
   }, []);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -614,30 +648,30 @@ export default function App() {
   ];
 
   return (
-    <div style={{
-      fontFamily: "'IBM Plex Sans JP', 'Hiragino Sans', sans-serif",
-      background: '#E3EAF0', minHeight: '100vh', maxWidth: 480, margin: '0 auto',
-      position: 'relative', paddingBottom: 70
-    }}>
+    <div style={{ fontFamily: "'IBM Plex Sans JP', 'Hiragino Sans', sans-serif", background: '#E3EAF0', minHeight: '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', paddingBottom: 70 }}>
       <div style={{
-        padding: '20px 18px 14px', position: 'sticky', top: 0, zIndex: 10,
-        background: INK, color: '#F5F8FA',
+        padding: '20px 18px 14px', position: 'sticky', top: 0, zIndex: 10, background: INK, color: '#F5F8FA',
         backgroundImage: `repeating-linear-gradient(0deg, ${GRID_LINE} 0, ${GRID_LINE} 1px, transparent 1px, transparent 18px), repeating-linear-gradient(90deg, ${GRID_LINE} 0, ${GRID_LINE} 1px, transparent 1px, transparent 18px)`,
         borderBottom: `2px solid ${AMBER}`
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: '0.16em', color: AMBER, fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace" }}>
           <Crosshair size={11} /> ATLAS UNIVERSITY — BLUEPRINT No.10
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 19, fontWeight: 700, letterSpacing: '0.01em', marginBottom: 12 }}>
-          開校準備タスク図面
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 19, fontWeight: 700, letterSpacing: '0.01em' }}>
+            開校準備タスク図面
+          </div>
+          <button
+            onClick={() => setCreating(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: AMBER, color: INK_DEEP, border: 'none', borderRadius: 3, padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}
+          >
+            <Plus size={14} /> 新規
+          </button>
         </div>
 
         {tab === 'list' && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', gap: 6,
-              background: '#F5F8FA', border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: '8px 10px'
-            }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, background: '#F5F8FA', border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: '8px 10px' }}>
               <Search size={15} color="#6E8296" />
               <input
                 value={search}
@@ -653,12 +687,7 @@ export default function App() {
             </div>
             <button
               onClick={() => setFilterOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5, background: activeFilterCount ? AMBER : '#F5F8FA',
-                color: activeFilterCount ? INK_DEEP : '#3E5266', border: `1px solid ${PAPER_LINE}`,
-                borderRadius: 3, padding: '8px 12px', fontSize: 12.5, fontWeight: 700,
-                fontFamily: "'JetBrains Mono', monospace"
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: activeFilterCount ? AMBER : '#F5F8FA', color: activeFilterCount ? INK_DEEP : '#3E5266', border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}
             >
               <Filter size={14} />
               {activeFilterCount > 0 ? activeFilterCount : ''}
@@ -673,7 +702,7 @@ export default function App() {
             <div style={{ fontSize: 11, color: '#4E6478', marginBottom: 10, fontFamily: "'JetBrains Mono', monospace" }}>{sorted.length}件のタスク</div>
             {sorted.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#4E6478', fontSize: 13, padding: '60px 20px' }}>
-                条件に一致するタスクがありません。検索や絞り込みを見直してみてください。
+                条件に一致するタスクがありません。検索や絞り込みを見直すか、右上の「新規」から追加してみてください。
               </div>
             ) : (
               sorted.map((t) => <TaskCard key={t.id} task={t} onOpen={setSelectedTask} />)
@@ -686,22 +715,11 @@ export default function App() {
         )}
       </div>
 
-      <div style={{
-        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480,
-        background: INK, borderTop: `2px solid ${AMBER}`, display: 'flex', padding: '8px 10px', zIndex: 20
-      }}>
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: INK, borderTop: `2px solid ${AMBER}`, display: 'flex', padding: '8px 10px', zIndex: 20 }}>
         {TABS.map(({ key, label, icon: Icon }) => {
           const active = tab === key;
           return (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer',
-                color: active ? AMBER : '#7C93A8'
-              }}
-            >
+            <button key={key} onClick={() => setTab(key)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer', color: active ? AMBER : '#7C93A8' }}>
               <Icon size={19} strokeWidth={active ? 2.4 : 2} />
               <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500, fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
             </button>
@@ -710,7 +728,25 @@ export default function App() {
       </div>
 
       <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} setFilters={setFilters} options={options} />
-      <DetailSheet task={selectedTask} onClose={() => setSelectedTask(null)} onUpdate={handleUpdate} />
+
+      {selectedTask && (
+        <TaskForm
+          task={selectedTask}
+          isNew={false}
+          onSave={handleUpdate}
+          onCancel={() => setSelectedTask(null)}
+          onDelete={() => handleDelete(selectedTask.id)}
+        />
+      )}
+      {creating && (
+        <TaskForm
+          task={null}
+          isNew={true}
+          suggestedId={nextTaskId(tasksRaw)}
+          onSave={handleCreate}
+          onCancel={() => setCreating(false)}
+        />
+      )}
     </div>
   );
 }

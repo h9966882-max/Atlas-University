@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, X, ChevronRight, ChevronDown, LayoutList, GaugeCircle, GitBranch, AlertTriangle, Clock, CircleDot, CheckCircle2, PauseCircle, Circle, Crosshair, Plus, Trash2 } from 'lucide-react';
+import { Search, Filter, X, ChevronRight, ChevronDown, LayoutList, GaugeCircle, GitBranch, AlertTriangle, Clock, CircleDot, CheckCircle2, PauseCircle, Circle, Crosshair, Plus, Trash2, ArrowUpDown } from 'lucide-react';
 import RAW_TASKS from './tasks.json';
 
 const STORAGE_KEY = 'atlas-tasks-v1';
@@ -19,6 +19,11 @@ const PRIORITY_STYLE = {
   'Beyond Best': { fg: '#3E4E8C', bg: '#DBE0F2', label: 'BEYOND BEST' },
 };
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
+const SORT_OPTIONS = [
+  { key: 'status', label: '状態順' },
+  { key: 'dueAsc', label: '期限が近い順' },
+  { key: 'dueDesc', label: '期限が遠い順' },
+];
 
 const INK = '#0F2A44';
 const INK_DEEP = '#0A1E33';
@@ -574,6 +579,7 @@ export default function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [sortBy, setSortBy] = useState('status');
 
   useEffect(() => {
     try {
@@ -609,14 +615,23 @@ export default function App() {
   }, [tasks, search, filters]);
 
   const sorted = useMemo(() => {
+    const dueTime = (t) => (t.dueDate ? new Date(t.dueDate).getTime() : null);
     return [...filtered].sort((a, b) => {
+      if (sortBy === 'dueAsc' || sortBy === 'dueDesc') {
+        const da = dueTime(a);
+        const db = dueTime(b);
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return sortBy === 'dueAsc' ? da - db : db - da;
+      }
       const rank = (t) => (t.status === '進行中' ? 0 : t.status === '保留' ? 1 : t.status === '未着手' ? 2 : 3);
       const r = rank(a) - rank(b);
       if (r !== 0) return r;
       const order = (v) => (v === '' ? Infinity : Number(v) || Infinity);
       return order(a.execOrder) - order(b.execOrder);
     });
-  }, [filtered]);
+  }, [filtered, sortBy]);
 
   const handleUpdate = useCallback((updatedTask) => {
     setTasksRaw((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
@@ -692,6 +707,31 @@ export default function App() {
               <Filter size={14} />
               {activeFilterCount > 0 ? activeFilterCount : ''}
             </button>
+          </div>
+        )}
+
+        {tab === 'list' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, overflowX: 'auto' }}>
+            <ArrowUpDown size={13} color="#9EC4E0" style={{ flexShrink: 0 }} />
+            {SORT_OPTIONS.map(({ key, label }) => {
+              const active = sortBy === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSortBy(key)}
+                  style={{
+                    flexShrink: 0, fontSize: 11.5, padding: '5px 10px', borderRadius: 20,
+                    border: active ? `1px solid ${AMBER}` : '1px solid rgba(158,196,224,0.35)',
+                    background: active ? AMBER : 'transparent',
+                    color: active ? INK_DEEP : '#9EC4E0',
+                    fontWeight: active ? 700 : 500, cursor: 'pointer',
+                    fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap'
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

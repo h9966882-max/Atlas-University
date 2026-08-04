@@ -197,11 +197,15 @@ function FilterSheet({ open, onClose, filters, setFilters, options }) {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {options[field].map((val) => {
-                const active = filters[field] === val;
+                const active = (filters[field] || []).includes(val);
                 return (
                   <button
                     key={val || '(空欄)'}
-                    onClick={() => setFilters((f) => ({ ...f, [field]: active ? null : val }))}
+                    onClick={() => setFilters((f) => {
+                      const cur = f[field] || [];
+                      const next = active ? cur.filter((v) => v !== val) : [...cur, val];
+                      return { ...f, [field]: next };
+                    })}
                     style={{
                       fontSize: 12.5, padding: '5px 11px', borderRadius: 3,
                       border: active ? `1px solid ${AMBER}` : `1px solid ${PAPER_LINE}`,
@@ -608,7 +612,7 @@ export default function App() {
     return tasks.filter((t) => {
       if (q && !((t.name || '').toLowerCase().includes(q) || (t.summary || '').toLowerCase().includes(q) || (t.id || '').toLowerCase().includes(q))) return false;
       for (const key of Object.keys(filters)) {
-        if (filters[key] && t[key] !== filters[key]) return false;
+        if (filters[key] && filters[key].length > 0 && !filters[key].includes(t[key])) return false;
       }
       return true;
     });
@@ -654,7 +658,7 @@ export default function App() {
     }
   }, []);
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = Object.values(filters).reduce((sum, arr) => sum + ((arr && arr.length) || 0), 0);
 
   const TABS = [
     { key: 'list', label: '一覧', icon: LayoutList },

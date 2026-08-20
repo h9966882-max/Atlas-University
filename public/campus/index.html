@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ja" data-theme="system">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#102b3f" />
+  <meta name="description" content="Atlas大学へ登校し、学び、図書館やキャンパスの日常へ向かう学生用Campus Home。" />
+  <title>Atlas Student Campus</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">本文へ移動</a>
+
+  <header class="hero" id="home">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <nav class="topbar" aria-label="Campus utility">
+      <a class="wordmark" href="#home" aria-label="Atlas Student Campus ホーム">
+        <span class="wordmark-mark" aria-hidden="true">A</span>
+        <span>
+          <strong>ATLAS UNIVERSITY</strong>
+          <small>STUDENT CAMPUS · v0.1</small>
+        </span>
+      </a>
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="表示テーマを切り替える" title="表示テーマを切り替える">
+        <span id="theme-icon" aria-hidden="true">◐</span>
+      </button>
+    </nav>
+
+    <div class="hero-content">
+      <p class="eyebrow">WELCOME TO ATLAS</p>
+      <h1>世界を理解するために学ぶ。</h1>
+      <p class="hero-lead">何かを学んでも、ただ少し立ち寄るだけでもいい。今日も大学はここにあります。</p>
+      <p class="campus-datetime" aria-live="polite">
+        <span id="campus-date">2026年8月21日</span>
+        <span class="dot" aria-hidden="true">•</span>
+        <span id="campus-greeting">こんばんは</span>
+      </p>
+      <div class="hero-actions">
+        <button class="button button-primary" id="enter-campus" type="button">ENTER CAMPUS</button>
+        <a class="button button-ghost" href="https://app.notion.com/p/3b2c70c3c0768143a229cda05a2d296a" target="_blank" rel="noopener">Notion版 Student Campus</a>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#today" aria-label="今日の大学へ進む">
+      <span>今日の大学へ</span>
+      <span aria-hidden="true">↓</span>
+    </a>
+  </header>
+
+  <main id="main">
+    <section class="section section-today" id="today" aria-labelledby="today-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">TODAY AT ATLAS</p>
+          <h2 id="today-title">今日の大学</h2>
+        </div>
+        <a class="text-link" href="https://app.notion.com/p/3bfc70c3c07681ef9637c97354985a80" target="_blank" rel="noopener">正本を開く ↗</a>
+      </div>
+
+      <div class="today-grid">
+        <article class="feature-card next-event-card">
+          <span class="card-icon" aria-hidden="true">🗓️</span>
+          <p class="card-label">NEXT ON CAMPUS</p>
+          <h3 id="next-event-title">次の学校行事</h3>
+          <p id="next-event-date" class="event-date">Student Calendarで確認</p>
+          <p id="next-event-note" class="muted">未来の予定はStudent Calendar正本を優先します。</p>
+          <a class="card-link" href="https://app.notion.com/p/5486da17eae8407fa9e44d7072f9bfb0" target="_blank" rel="noopener">学生カレンダーを見る</a>
+        </article>
+
+        <article class="feature-card notice-card">
+          <span class="card-icon" aria-hidden="true">🌿</span>
+          <p class="card-label">CAMPUS NOTICE</p>
+          <h3>予定と利用案内</h3>
+          <p class="muted">Facilities Noticeや今日の小さなお知らせは、確認できるNotion正本から表示します。</p>
+          <div class="inline-links">
+            <a href="https://app.notion.com/p/3bfc70c3c07681ef9637c97354985a80" target="_blank" rel="noopener">今日の大学</a>
+            <a href="https://app.notion.com/p/3c1c70c3c07681759283d301e12f0389" target="_blank" rel="noopener">中庭掲示板</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="learn" aria-labelledby="learn-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">CONTINUE LEARNING</p>
+          <h2 id="learn-title">学びの現在地へ</h2>
+        </div>
+        <a class="text-link" href="https://app.notion.com/p/3b3c70c3c0768182821cd34014f6745a" target="_blank" rel="noopener">Dashboard ↗</a>
+      </div>
+
+      <article class="resume-card" id="resume-card" data-verified="2026-08-19" data-valid-until="2026-08-28">
+        <div class="resume-topline">
+          <span class="status-pill">中断 · 進捗10%</span>
+          <span class="snapshot-label" id="snapshot-label">正本確認：2026-08-19</span>
+        </div>
+        <p class="course-code">FP101-02</p>
+        <h3>事実と解釈を分ける</h3>
+        <div class="progress" role="progressbar" aria-label="講義進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="10">
+          <span style="width: 10%"></span>
+        </div>
+        <div class="resume-point" id="resume-detail">
+          <p class="card-label">次の未回答設問</p>
+          <p>「返事がない」ことから考えられる、「避けている」以外の解釈を一つ挙げる。</p>
+        </div>
+        <p class="snapshot-warning" id="snapshot-warning" hidden>この表示は確認期限を過ぎました。最新の現在地はStudent Dashboardで確認してください。</p>
+        <div class="card-actions">
+          <a class="button button-primary button-small" id="resume-primary" href="https://app.notion.com/p/3b2c70c3c07681e09241c305852e7b7a" target="_blank" rel="noopener">現在地を開く</a>
+          <button class="button button-secondary button-small" id="copy-resume" type="button" data-copy="FP101-02の続きから！">再開合図をコピー</button>
+        </div>
+        <p class="microcopy">Webは受講記録を更新しません。LRDB・受講ページ・篤史との実会話が正本です。</p>
+      </article>
+
+      <div class="choice-grid">
+        <a class="choice-card" href="https://app.notion.com/p/3b3c70c3c076812393a6c2c5c74add64" target="_blank" rel="noopener">
+          <span aria-hidden="true">▶️</span>
+          <strong>新しい講義を選ぶ</strong>
+          <small>本講義・Atlas Mini</small>
+        </a>
+        <a class="choice-card" href="https://app.notion.com/p/3b4c70c3c07681dd8d33ca178b489bcb" target="_blank" rel="noopener">
+          <span aria-hidden="true">👀</span>
+          <strong>本として読む</strong>
+          <small>読書だけでは正式受講になりません</small>
+        </a>
+        <a class="choice-card" href="https://app.notion.com/p/3b2c70c3c07681cdb5a8dd33a48402a2" target="_blank" rel="noopener">
+          <span aria-hidden="true">🧑‍🏫</span>
+          <strong>Tutorへ相談</strong>
+          <small>まとまっていなくても大丈夫</small>
+        </a>
+      </div>
+    </section>
+
+    <section class="section section-campus" id="campus" aria-labelledby="campus-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">QUICK WALK</p>
+          <h2 id="campus-title">ちょっと寄る</h2>
+        </div>
+        <a class="text-link" href="https://app.notion.com/p/3c1c70c3c07681e998d9f29d95cc20e7" target="_blank" rel="noopener">Campus Map ↗</a>
+      </div>
+
+      <div class="destination-grid">
+        <a class="destination-card destination-library" href="https://app.notion.com/p/3b4c70c3c07681dd8d33ca178b489bcb" target="_blank" rel="noopener">
+          <span class="destination-icon" aria-hidden="true">📚</span>
+          <span><strong>Library</strong><small>本を探す・読む・借りる</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="destination-card" href="https://app.notion.com/p/3c1c70c3c07681f5ad63e990402bca85" target="_blank" rel="noopener">
+          <span class="destination-icon" aria-hidden="true">☕</span>
+          <span><strong>Coffee Stand</strong><small>今日の一杯</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="destination-card" href="https://app.notion.com/p/3c1c70c3c076816dbb46cd21c9f5e562" target="_blank" rel="noopener">
+          <span class="destination-icon" aria-hidden="true">🌿</span>
+          <span><strong>Courtyard</strong><small>少し座る</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="destination-card" href="https://app.notion.com/p/3c1c70c3c076819188e2fce15b217eee" target="_blank" rel="noopener">
+          <span class="destination-icon" aria-hidden="true">🍝</span>
+          <span><strong>Dining Hall</strong><small>今日のメニュー</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="campus-banner">
+        <div>
+          <p class="section-kicker">WALK THE CAMPUS</p>
+          <h3>今日は、どう過ごす？</h3>
+          <p>静かに過ごす、本とコーヒー、作る・観る、世界を見る。場所ではなく目的から選べます。</p>
+        </div>
+        <a class="button button-secondary" href="https://app.notion.com/p/3c1c70c3c07681e998d9f29d95cc20e7" target="_blank" rel="noopener">キャンパスを歩く</a>
+      </div>
+    </section>
+
+    <section class="section" id="library" aria-labelledby="library-title">
+      <div class="library-panel">
+        <div class="library-copy">
+          <p class="section-kicker">ATLAS LIBRARY</p>
+          <h2 id="library-title">今日は、どの本に出会おう。</h2>
+          <p>探してもいい。気分で選んでもいい。コーヒーだけ飲んで帰ってもいい。</p>
+          <div class="library-actions">
+            <a class="button button-primary" href="https://app.notion.com/p/3b4c70c3c07681dd8d33ca178b489bcb" target="_blank" rel="noopener">図書館へ入る</a>
+            <a class="button button-ghost-on-dark" href="https://app.notion.com/p/3c1c70c3c0768186b611c64348affad7" target="_blank" rel="noopener">206冊から探す</a>
+          </div>
+        </div>
+        <div class="library-shelf" aria-label="図書館の入口">
+          <a href="https://app.notion.com/p/3c1c70c3c0768113a22cfb4d358cd2f5" target="_blank" rel="noopener"><span>🔖</span><strong>My Stack</strong><small>読みかけ・あとで読む</small></a>
+          <a href="https://app.notion.com/p/3c1c70c3c0768107affbf09278744b5e" target="_blank" rel="noopener"><span>📖</span><strong>My Loans</strong><small>借りる・返す</small></a>
+          <a href="https://app.notion.com/p/3bfc70c3c07681859950d17e4762c14e" target="_blank" rel="noopener"><span>✨</span><strong>企画棚</strong><small>気分・問いから選ぶ</small></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="life" aria-labelledby="life-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">CAMPUS LIFE</p>
+          <h2 id="life-title">大学で過ごす</h2>
+        </div>
+      </div>
+
+      <div class="life-grid">
+        <a href="https://app.notion.com/p/3c1c70c3c07681938ca9d21e5194fa75" target="_blank" rel="noopener"><span>🪪</span><strong>Student Desk</strong><small>自分の大学生活</small></a>
+        <a href="https://app.notion.com/p/5486da17eae8407fa9e44d7072f9bfb0" target="_blank" rel="noopener"><span>🗓️</span><strong>Calendar</strong><small>これからの予定</small></a>
+        <a href="https://app.notion.com/p/3c1c70c3c076813780c3f6153b526b20" target="_blank" rel="noopener"><span>🫧</span><strong>Commons</strong><small>何もしなくていい場所</small></a>
+        <a href="https://app.notion.com/p/3c1c70c3c076813c8707cdc1824c4dd2" target="_blank" rel="noopener"><span>🛟</span><strong>Support</strong><small>相談先が分からないとき</small></a>
+      </div>
+
+      <div class="after-class">
+        <p class="section-kicker">AFTER CLASS</p>
+        <div class="after-links">
+          <a href="https://app.notion.com/p/3c1c70c3c076816e930fc7169da9fb08" target="_blank" rel="noopener">📻 Radio</a>
+          <a href="https://app.notion.com/p/3c1c70c3c07681719680ed6eae7bcc2e" target="_blank" rel="noopener">📰 Journal</a>
+          <a href="https://app.notion.com/p/3c1c70c3c07681aa8665cdda3fb43627" target="_blank" rel="noopener">🎟️ Passport</a>
+          <a href="https://app.notion.com/p/3c1c70c3c07681cebe5be37168834d4d" target="_blank" rel="noopener">🌙 After Hours</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><strong>Atlas Student Campus · CW01 Home</strong></p>
+    <p>このWebが使えないときも、Notion＋篤史でAtlas大学は通常運用できます。</p>
+    <div class="footer-links">
+      <a href="https://app.notion.com/p/3b2c70c3c0768143a229cda05a2d296a" target="_blank" rel="noopener">Notion Student Campus</a>
+      <a href="https://app.notion.com/p/3b0c70c3c076810dac76d4932bdf8034" target="_blank" rel="noopener">Atlas大学ホーム</a>
+    </div>
+  </footer>
+
+  <nav class="bottom-nav" aria-label="Student Campus main navigation">
+    <a href="#home" data-nav="home"><span aria-hidden="true">⌂</span><small>Home</small></a>
+    <a href="#learn" data-nav="learn"><span aria-hidden="true">🎓</span><small>Learn</small></a>
+    <a href="#campus" data-nav="campus"><span aria-hidden="true">🗺️</span><small>Campus</small></a>
+    <a href="#library" data-nav="library"><span aria-hidden="true">📚</span><small>Library</small></a>
+    <a href="#life" data-nav="life"><span aria-hidden="true">🌿</span><small>Life</small></a>
+  </nav>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <noscript><p class="noscript">JavaScriptが無効でも各施設リンクは利用できます。日付・テーマ・コピー機能のみ停止します。</p></noscript>
+</body>
+</html>
